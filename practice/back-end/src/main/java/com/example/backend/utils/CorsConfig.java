@@ -1,4 +1,4 @@
-package com.example.jax_ws.utils;
+package com.example.backend.utils;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
@@ -18,7 +18,7 @@ public class CorsConfig implements ContainerResponseFilter {
                 "Access-Control-Allow-Credentials", "true");
         responseContext.getHeaders().add(
                 "Access-Control-Allow-Headers",
-                "origin, content-type, accept, authorization");
+                "origin, content-type, accept, authorization, access-control-allow-origin");
         responseContext.getHeaders().add(
                 "Access-Control-Allow-Methods",
                 "GET, POST, PUT, DELETE, OPTIONS, HEAD");

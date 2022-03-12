@@ -1,4 +1,4 @@
-package com.example.jax_ws.utils;
+package com.example.backend.utils;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -8,7 +8,7 @@ public class ConnectionHelper {
     private final static String DATABASE_URL_FORMAT = "jdbc:mysql://%s:%d/%s?useUnicode=true&contentEncoding=UTF-8";
     private final static String DATABASE_SERVER = "localhost";
     private final static int DATABASE_PORT = 3306;
-    private final static String DATABASE_NAME = "jaxws_demo";
+    private final static String DATABASE_NAME = "t2004e_jax_ws";
     private final static String DATABASE_USER = "root";
     private final static String DATABASE_PWD = "";
     private static Connection connection;
