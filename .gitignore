@@ -5,6 +5,7 @@
 ### Angular ###
 ## Angular ##
 # compiled output
+*.bak
 dist/
 tmp/
 app/**/*.js
