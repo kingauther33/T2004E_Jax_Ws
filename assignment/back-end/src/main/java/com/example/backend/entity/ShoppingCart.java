@@ -22,6 +22,10 @@ public class ShoppingCart {
         this.shipPhone = "";
     }
 
+    public ShoppingCart(int userId) {
+        this.userId = userId;
+    }
+
     public void add(Product product, int quantity) {
         if (mapCartItems == null) {
             mapCartItems = new HashMap<>();
@@ -56,17 +60,17 @@ public class ShoppingCart {
         mapCartItems.put(product.getId(), item);
     }
 
-    public void remove(Product product) {
-        if (mapCartItems == null) {
-            mapCartItems = new HashMap<>();
-        }
-
-        CartItem item = mapCartItems.get(product.getId());
-        if (item != null) {
-            cartItems.remove(mapCartItems.get(product.getId()));
-            mapCartItems.remove(product.getId());
-        }
-    }
+//    public void remove(Product product) {
+//        if (mapCartItems == null) {
+//            mapCartItems = new HashMap<>();
+//        }
+//
+//        CartItem item = mapCartItems.get(product.getId());
+//        if (item != null) {
+//            cartItems.remove(mapCartItems.get(product.getId()));
+//            mapCartItems.remove(product.getId());
+//        }
+//    }
 
     public int getId() {
         return id;

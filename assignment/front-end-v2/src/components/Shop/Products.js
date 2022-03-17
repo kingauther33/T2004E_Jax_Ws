@@ -1,33 +1,36 @@
 import ProductItem from './ProductItem';
 import classes from './Products.module.css';
-
-const DUMMY_PRODUCTS = [
-	{
-		id: 'p1',
-		price: 6,
-		title: 'My first book',
-		description: 'This is a first product - amazing!',
-	},
-	{
-		id: 'p2',
-		price: 5,
-		title: 'My second book',
-		description: 'This is a second product - amazing!',
-	},
-];
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import { API } from 'API';
 
 const Products = (props) => {
+	const [products, setProducts] = useState([]);
+
+	useEffect(() => {
+		const fetchProducts = async () => {
+			await axios
+				.get(API.findAllProducts.url, API.config)
+				.then((res) => {
+					setProducts(res.data);
+				})
+				.catch((err) => console.error(err));
+		};
+
+		fetchProducts();
+	}, []);
+
 	return (
 		<section className={classes.products}>
 			<h2>Buy your favorite products</h2>
 			<ul>
-				{DUMMY_PRODUCTS.map((product) => (
+				{products?.map((product) => (
 					<ProductItem
 						key={product.id}
 						id={product.id}
-						title={product.title}
+						name={product.name}
 						price={product.price}
-						description={product.description}
+						status={product.status}
 					/>
 				))}
 			</ul>

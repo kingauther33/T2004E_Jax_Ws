@@ -1,6 +1,7 @@
 package com.example.backend.model;
 
 import com.example.backend.entity.CartItem;
+import com.example.backend.entity.Product;
 import com.example.backend.entity.ShoppingCart;
 import com.example.backend.utils.ConnectionHelper;
 import com.mysql.cj.protocol.Resultset;
@@ -14,8 +15,28 @@ public class ShoppingCartModelImp implements ShoppingCartModel {
 
     private Connection conn;
 
+    private CartItemModel cartItemModel;
+
     public ShoppingCartModelImp() {
         conn = ConnectionHelper.getConnection();
+        cartItemModel = new CartItemModel();
+    }
+
+    public ShoppingCart create(int userId) throws SQLException {
+        PreparedStatement stmtShoppingCart = conn.prepareStatement("insert into shopping_carts (userId, shipName, shipAddress, shipPhone, totalPrice) values (?, '', '', '', 0)", Statement.RETURN_GENERATED_KEYS);
+        stmtShoppingCart.setInt(1, userId);
+        int affectedRows = stmtShoppingCart.executeUpdate();
+        ShoppingCart shoppingCart = new ShoppingCart();
+        if (affectedRows > 0) {
+            ResultSet resultSetGeneratedKeys = stmtShoppingCart.getGeneratedKeys();
+            if (resultSetGeneratedKeys.next()) {
+                int id = resultSetGeneratedKeys.getInt(1);
+                shoppingCart.setId(id);
+                shoppingCart.setUserId(userId);
+            }
+        }
+
+        return shoppingCart;
     }
 
     @Override
@@ -74,35 +95,50 @@ public class ShoppingCartModelImp implements ShoppingCartModel {
                 throw new Error("Shopping's null or empty.");
             }
 
-            PreparedStatement stmtShoppingCart = conn.prepareStatement("insert into shopping_carts (userId, shipName, shipAddress, shipPhone, totalPrice) values (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
-            stmtShoppingCart.setInt(1, shoppingCart.getUserId());
-            stmtShoppingCart.setString(2, shoppingCart.getShipName());
-            stmtShoppingCart.setString(3, shoppingCart.getShipAddress());
-            stmtShoppingCart.setString(4, shoppingCart.getShipPhone());
-            stmtShoppingCart.setDouble(5, shoppingCart.getTotalPrice());
-            int affectedRows = stmtShoppingCart.executeUpdate();
-            if (affectedRows > 0) {
-                ResultSet resultSetGeneratedKeys = stmtShoppingCart.getGeneratedKeys();
-                if (resultSetGeneratedKeys.next()) {
-                    int id = resultSetGeneratedKeys.getInt(1);
-                    shoppingCart.setId(id);
+            if (shoppingCart.getId() == 0) {
+                PreparedStatement stmtShoppingCart = conn.prepareStatement("insert into shopping_carts (userId, shipName, shipAddress, shipPhone, totalPrice) values (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+                stmtShoppingCart.setInt(1, shoppingCart.getUserId());
+                stmtShoppingCart.setString(2, shoppingCart.getShipName());
+                stmtShoppingCart.setString(3, shoppingCart.getShipAddress());
+                stmtShoppingCart.setString(4, shoppingCart.getShipPhone());
+                stmtShoppingCart.setDouble(5, shoppingCart.getTotalPrice());
+                int affectedRows = stmtShoppingCart.executeUpdate();
+                if (affectedRows > 0) {
+                    ResultSet resultSetGeneratedKeys = stmtShoppingCart.getGeneratedKeys();
+                    if (resultSetGeneratedKeys.next()) {
+                        int id = resultSetGeneratedKeys.getInt(1);
+                        shoppingCart.setId(id);
+                    }
+                }
+                if (shoppingCart.getId() == 0) {
+                    throw new Error("Can't insert shopping cart.");
                 }
             }
-            if (shoppingCart.getId() == 0) {
-                throw new Error("Can't insert shopping cart.");
-            }
+
             // insert cart items;
             for (CartItem item :
                     shoppingCart.getCartItems()) {
-                PreparedStatement stmtCartItem = conn.prepareStatement("insert into cart_items (shoppingCartId, productId, productName, unitPrice, quantity) values (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
-                stmtCartItem.setInt(1, shoppingCart.getId());
-                stmtCartItem.setInt(2, item.getProductId());
-                stmtCartItem.setString(3, item.getProductName());
-                stmtCartItem.setDouble(4, item.getUnitPrice());
-                stmtCartItem.setInt(5, item.getQuantity());
-                int affectedCartItemRows = stmtCartItem.executeUpdate();
-                if (affectedCartItemRows == 0) { // lỗi
-                    throw new Error("Insert cart item fails.");
+                item.setShoppingCartId(shoppingCart.getId());
+                CartItem cartItem = cartItemModel.findByProductIdAndShoppingCartId(item.getProductId(), item.getShoppingCartId());
+                if (cartItem == null) {
+                    PreparedStatement stmtCartItem = conn.prepareStatement("insert into cart_items (shoppingCartId, productId, productName, unitPrice, quantity) values (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+                    stmtCartItem.setInt(1, item.getShoppingCartId());
+                    stmtCartItem.setInt(2, item.getProductId());
+                    stmtCartItem.setString(3, item.getProductName());
+                    stmtCartItem.setDouble(4, item.getUnitPrice());
+                    stmtCartItem.setInt(5, item.getQuantity());
+                    int affectedCartItemRows = stmtCartItem.executeUpdate();
+                    if (affectedCartItemRows == 0) { // lỗi
+                        throw new Error("Insert cart item fails.");
+                    }
+                } else {
+                    PreparedStatement stmtCartItem = conn.prepareStatement("update cart_items set quantity = ? where productId =  ?", Statement.RETURN_GENERATED_KEYS);
+                    stmtCartItem.setInt(1, item.getQuantity());
+                    stmtCartItem.setInt(2, item.getProductId());
+                    int affectedCartItemRows = stmtCartItem.executeUpdate();
+                    if (affectedCartItemRows == 0) { // lỗi
+                        throw new Error("Insert cart item fails.");
+                    }
                 }
             }
             conn.commit(); // lưu tất cả vào db.
@@ -116,55 +152,27 @@ public class ShoppingCartModelImp implements ShoppingCartModel {
         return shoppingCart;
     }
 
-    public ShoppingCart update(int id, ShoppingCart updateObject) throws SQLException {
+    public boolean remove(int id) throws SQLException {
         conn.setAutoCommit(false);// begin transaction
         try {
-            // trường hợp shopping cart null hoặc không có sản phẩm.
-            if (updateObject == null || updateObject.getCartItems().size() == 0) {
-                throw new Error("Shopping's null or empty.");
-            }
-            PreparedStatement stmtShoppingCart = conn.prepareStatement("update shopping_carts set shipName = ?, shipAddress = ?, shipPhone = ?, totalPrice = ? where id = ?", Statement.RETURN_GENERATED_KEYS);
-            stmtShoppingCart.setString(1, updateObject.getShipName());
-            stmtShoppingCart.setString(2, updateObject.getShipAddress());
-            stmtShoppingCart.setString(3, updateObject.getShipPhone());
-            stmtShoppingCart.setDouble(4, updateObject.getTotalPrice());
-            stmtShoppingCart.setInt(5, id);
-            int affectedRows = stmtShoppingCart.executeUpdate();
-            if (affectedRows <= 0) {
-                throw new Error("Can't update shopping cart.");
-            }
-            // delete old cart items.
-            PreparedStatement stmtDeleteCartItem = conn.prepareStatement("delete from cart_items where shoppingCartId = ?", Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement stmtDeleteCartItem = conn.prepareStatement("delete from cart_items where productId = ?");
             stmtDeleteCartItem.setInt(1, id);
-            int affectedDeleteCartItemRows = stmtDeleteCartItem.executeUpdate();
-            if (affectedDeleteCartItemRows == 0) { // lỗi
-                throw new Error("Insert cart item fails.");
+            int affectedCartItemRows = stmtDeleteCartItem.executeUpdate();
+            if (affectedCartItemRows <= 0) {
+                return false;
             }
-            // update cart items;
-            for (CartItem item :
-                    updateObject.getCartItems()) {
-                PreparedStatement stmtCartItem = conn.prepareStatement("insert into cart_items (shoppingCartId, productId, productName, unitPrice, quantity) values (?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
-                stmtCartItem.setInt(1, id);
-                stmtCartItem.setInt(2, item.getProductId());
-                stmtCartItem.setString(3, item.getProductName());
-                stmtCartItem.setDouble(4, item.getUnitPrice());
-                stmtCartItem.setInt(5, item.getQuantity());
-                int affectedCartItemRows = stmtCartItem.executeUpdate();
-                if (affectedCartItemRows == 0) { // lỗi
-                    throw new Error("Insert cart item fails.");
-                }
-            }
-            conn.commit(); // lưu tất cả vào db.
+            conn.commit();
+            return true;
         } catch (Exception ex) {
-            updateObject = null;
+            ex.printStackTrace();
             conn.rollback();
         } finally {
             conn.setAutoCommit(true); // trả trạng thái auto commit default.
         }
-        return updateObject;
+        return false;
     }
 
-    public boolean delete(int id) throws SQLException {
+    public boolean clear(int id) throws SQLException {
         conn.setAutoCommit(false);// begin transaction
         try {
             PreparedStatement stmtDeleteCartItem = conn.prepareStatement("delete from cart_items where shoppingCartId = ?");

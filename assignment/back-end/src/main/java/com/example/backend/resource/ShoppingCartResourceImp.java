@@ -22,10 +22,21 @@ public class ShoppingCartResourceImp implements ShoppingCartResource {
         this.productModel = new ProductModel();
     }
 
+    @GET
+    @Path("/create")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response create(@HeaderParam("Authorization") int userId) {
+        try {
+            ShoppingCart shoppingCart = this.shoppingCartModel.create(userId);
+            return Response.status(Response.Status.OK).entity(shoppingCart).build();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ShoppingCart()).build();
+        }
+    }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Override
     public Response get(@HeaderParam("Authorization") int userId) {
         try {
             ShoppingCart shoppingCart = this.shoppingCartModel.get(userId);
@@ -71,12 +82,7 @@ public class ShoppingCartResourceImp implements ShoppingCartResource {
         // do something.
         shoppingCart.add(product, quantity);
         try {
-            boolean isShoppingCartItemExisting = this.shoppingCartModel.checkShoppingCartExisting(shoppingCart);
-            if (!isShoppingCartItemExisting) {
-                shoppingCart = this.shoppingCartModel.save(shoppingCart);
-            } else {
-                shoppingCart = this.shoppingCartModel.update(shoppingCart.getId(), shoppingCart);
-            }
+            shoppingCart = this.shoppingCartModel.save(shoppingCart);
         } catch (SQLException e) {
             e.printStackTrace();
             shoppingCart = null;
@@ -96,7 +102,6 @@ public class ShoppingCartResourceImp implements ShoppingCartResource {
         if (quantity <= 0) {
             return Response.status(Response.Status.BAD_REQUEST).build();
         }
-
         // kiểm tra sản phẩm.
         Product product = null;
         try {
@@ -109,7 +114,6 @@ public class ShoppingCartResourceImp implements ShoppingCartResource {
         if (product == null) {
             return Response.status(Response.Status.BAD_REQUEST).build();
         }
-
         ShoppingCart shoppingCart = null;
         try {
             // check shopping cart trong db theo id người dùng.
@@ -118,21 +122,14 @@ public class ShoppingCartResourceImp implements ShoppingCartResource {
             e.printStackTrace();
             // trường hợp không có thì tạo mới.
         }
-
         if (shoppingCart == null) {
             shoppingCart = new ShoppingCart();
             shoppingCart.setUserId(userId);
         }
-
+        // do something.
         shoppingCart.update(product, quantity);
-
         try {
-            boolean isShoppingCartItemExisting = this.shoppingCartModel.checkShoppingCartExisting(shoppingCart);
-            if (!isShoppingCartItemExisting) {
-                shoppingCart = this.shoppingCartModel.save(shoppingCart);
-            } else {
-                shoppingCart = this.shoppingCartModel.update(shoppingCart.getId(), shoppingCart);
-            }
+            shoppingCart = this.shoppingCartModel.save(shoppingCart);
         } catch (SQLException e) {
             e.printStackTrace();
             shoppingCart = null;
@@ -174,12 +171,10 @@ public class ShoppingCartResourceImp implements ShoppingCartResource {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ShoppingCart()).build();
         }
 
-        shoppingCart.remove(product);
-
         boolean isDeletedSuccess = false;
 
         try {
-            isDeletedSuccess = this.shoppingCartModel.delete(shoppingCart.getId());
+            isDeletedSuccess = this.shoppingCartModel.remove(productId);
         } catch (SQLException e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(isDeletedSuccess).build();
         }
@@ -192,7 +187,28 @@ public class ShoppingCartResourceImp implements ShoppingCartResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Override
     public Response clear(@HeaderParam("Authorization") int userId) {
-        return null;
+        ShoppingCart shoppingCart = null;
+        try {
+            // check shopping cart trong db theo id người dùng.
+            shoppingCart = this.shoppingCartModel.get(userId);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // trường hợp không có thì tạo mới.
+        }
+
+        if (shoppingCart == null) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ShoppingCart()).build();
+        }
+
+        boolean isDeletedSuccess = false;
+
+        try {
+            isDeletedSuccess = this.shoppingCartModel.remove(userId);
+        } catch (SQLException e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(isDeletedSuccess).build();
+        }
+
+        return Response.status(Response.Status.CREATED).entity(isDeletedSuccess).build();
     }
 }
 
