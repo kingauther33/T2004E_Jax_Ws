@@ -115,7 +115,11 @@ public class ShoppingCartModelImp implements ShoppingCartModel {
                 }
             }
 
-            // insert cart items;
+            double totalPrice = 0;
+            boolean isDeleted = false;
+            List<CartItem> cartItemsAfterDelete = new ArrayList<>();
+            CartItem itemToDelete = new CartItem();
+            // update, insert and deduct cart items;
             for (CartItem item :
                     shoppingCart.getCartItems()) {
                 item.setShoppingCartId(shoppingCart.getId());
@@ -128,9 +132,17 @@ public class ShoppingCartModelImp implements ShoppingCartModel {
                     stmtCartItem.setDouble(4, item.getUnitPrice());
                     stmtCartItem.setInt(5, item.getQuantity());
                     int affectedCartItemRows = stmtCartItem.executeUpdate();
+                    totalPrice += item.getQuantity() * item.getUnitPrice();
                     if (affectedCartItemRows == 0) { // lỗi
                         throw new Error("Insert cart item fails.");
                     }
+                } else if (item.getQuantity() == -1) {
+                    remove(item.getProductId());
+                    cartItemsAfterDelete = shoppingCart.getCartItems();
+                    itemToDelete = item;
+                    isDeleted = true;
+                    conn.setAutoCommit(false);
+                    break;
                 } else {
                     PreparedStatement stmtCartItem = conn.prepareStatement("update cart_items set quantity = ? where productId =  ?", Statement.RETURN_GENERATED_KEYS);
                     stmtCartItem.setInt(1, item.getQuantity());
@@ -139,8 +151,19 @@ public class ShoppingCartModelImp implements ShoppingCartModel {
                     if (affectedCartItemRows == 0) { // lỗi
                         throw new Error("Insert cart item fails.");
                     }
+                    totalPrice += item.getQuantity() * item.getUnitPrice();
                 }
             }
+
+            if (isDeleted) {
+                cartItemsAfterDelete.remove(itemToDelete);
+                shoppingCart.setCartItems(cartItemsAfterDelete);
+            }
+            PreparedStatement stmtUpdateTotalPrice = conn.prepareStatement("update shopping_carts set totalPrice = ? where id = ?", Statement.RETURN_GENERATED_KEYS);
+            stmtUpdateTotalPrice.setDouble(1, totalPrice);
+            stmtUpdateTotalPrice.setInt(2, shoppingCart.getId());
+            stmtUpdateTotalPrice.executeUpdate();
+            shoppingCart.setTotalPrice(totalPrice);
             conn.commit(); // lưu tất cả vào db.
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -152,11 +175,11 @@ public class ShoppingCartModelImp implements ShoppingCartModel {
         return shoppingCart;
     }
 
-    public boolean remove(int id) throws SQLException {
+    public boolean remove(int productId) throws SQLException {
         conn.setAutoCommit(false);// begin transaction
         try {
             PreparedStatement stmtDeleteCartItem = conn.prepareStatement("delete from cart_items where productId = ?");
-            stmtDeleteCartItem.setInt(1, id);
+            stmtDeleteCartItem.setInt(1, productId);
             int affectedCartItemRows = stmtDeleteCartItem.executeUpdate();
             if (affectedCartItemRows <= 0) {
                 return false;
@@ -172,17 +195,17 @@ public class ShoppingCartModelImp implements ShoppingCartModel {
         return false;
     }
 
-    public boolean clear(int id) throws SQLException {
+    public boolean clear(int shoppingCartId) throws SQLException {
         conn.setAutoCommit(false);// begin transaction
         try {
             PreparedStatement stmtDeleteCartItem = conn.prepareStatement("delete from cart_items where shoppingCartId = ?");
-            stmtDeleteCartItem.setInt(1, id);
+            stmtDeleteCartItem.setInt(1, shoppingCartId);
             int affectedCartItemRows = stmtDeleteCartItem.executeUpdate();
             if (affectedCartItemRows <= 0) {
                 return false;
             }
             PreparedStatement stmtDelete = conn.prepareStatement("delete from shopping_carts where id = ?");
-            stmtDelete.setInt(1, id);
+            stmtDelete.setInt(1, shoppingCartId);
             int affectedRows = stmtDelete.executeUpdate();
             if (affectedRows <= 0) {
                 return false;

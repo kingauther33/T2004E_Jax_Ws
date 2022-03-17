@@ -14,6 +14,12 @@ export const API = {
 	addToShoppingCart: {
 		url: BASE_SHOPPING_CART_URL + '/add',
 	},
+	deductShoppingCart: {
+		url: BASE_SHOPPING_CART_URL + '/deduct',
+	},
+	clearShoppingCart: {
+		url: BASE_SHOPPING_CART_URL + '/clear',
+	},
 	config: {
 		headers: {
 			'Access-Control-Allow-Origin': '*',

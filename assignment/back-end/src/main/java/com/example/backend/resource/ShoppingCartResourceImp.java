@@ -94,6 +94,53 @@ public class ShoppingCartResourceImp implements ShoppingCartResource {
     }
 
     @GET
+    @Path("/deduct")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deduct(@HeaderParam("Authorization") int userId, @QueryParam("productId") int productId, @QueryParam("quantity") int quantity) {
+        // kiểm tra số lượng
+        if (quantity <= 0) {
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        }
+        // kiểm tra sản phẩm.
+        Product product = null;
+        try {
+            product = this.productModel.findById(productId);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        }
+
+        if (product == null) {
+            return Response.status(Response.Status.BAD_REQUEST).build();
+        }
+        ShoppingCart shoppingCart = null;
+        try {
+            // check shopping cart trong db theo id người dùng.
+            shoppingCart = this.shoppingCartModel.get(userId);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // trường hợp không có thì tạo mới.
+        }
+        if (shoppingCart == null) {
+            shoppingCart = new ShoppingCart();
+            shoppingCart.setUserId(userId);
+        }
+        // do something.
+        shoppingCart.deduct(product, quantity);
+        try {
+            shoppingCart = this.shoppingCartModel.save(shoppingCart);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            shoppingCart = null;
+        }
+        if (shoppingCart == null) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ShoppingCart()).build();
+        }
+        return Response.status(Response.Status.CREATED).entity(shoppingCart).build();
+    }
+
+
+    @GET
     @Path("/update")
     @Produces(MediaType.APPLICATION_JSON)
     @Override
@@ -203,7 +250,7 @@ public class ShoppingCartResourceImp implements ShoppingCartResource {
         boolean isDeletedSuccess = false;
 
         try {
-            isDeletedSuccess = this.shoppingCartModel.remove(userId);
+            isDeletedSuccess = this.shoppingCartModel.clear(shoppingCart.getId());
         } catch (SQLException e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(isDeletedSuccess).build();
         }

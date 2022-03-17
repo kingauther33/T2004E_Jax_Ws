@@ -50,7 +50,7 @@ export const fetchCartData = () => {
 				uiActions.showNotification({
 					status: 'error',
 					title: 'Error!',
-					message: 'Sending cart data failed!',
+					message: 'Fetching cart data failed!',
 				})
 			);
 		}
@@ -68,15 +68,16 @@ export const addToCartData = (productId, quantity) => {
 		);
 
 		const addRequest = async () => {
-			const response = await fetch(
-				`${API.addToShoppingCart.url}?productId=${productId}&quantity=${quantity}`
+			const response = await axios.get(
+				`${API.addToShoppingCart.url}?productId=${productId}&quantity=${quantity}`,
+				API.config
 			);
 
-			if (!response.ok) {
+			if (response.status !== 201) {
 				throw new Error('Add to cart data failed.');
 			}
 
-			const data = await response.json();
+			const data = await response.data;
 
 			return data;
 		};
@@ -92,7 +93,125 @@ export const addToCartData = (productId, quantity) => {
 					totalQuantity: cartData.cartItems.length || 0,
 				})
 			);
+			dispatch(uiActions.showCart());
+			dispatch(
+				uiActions.showNotification({
+					status: 'success',
+					title: 'Success!',
+					message: 'Add to cart successfully!',
+				})
+			);
 		} catch (error) {
+			console.log(error);
+			dispatch(
+				uiActions.showNotification({
+					status: 'error',
+					title: 'Error!',
+					message: 'Adding cart data failed!',
+				})
+			);
+		}
+	};
+};
+
+export const deductToCartData = (productId, quantity) => {
+	return async (dispatch) => {
+		dispatch(
+			uiActions.showNotification({
+				status: 'pending',
+				title: 'Sending.',
+				message: 'Sending cart data!',
+			})
+		);
+
+		const deductRequest = async () => {
+			const response = await axios.get(
+				`${API.deductShoppingCart.url}?productId=${productId}&quantity=${quantity}`,
+				API.config
+			);
+
+			if (response.status !== 201) {
+				throw new Error('Deduct to cart data failed.');
+			}
+
+			const data = await response.data;
+
+			return data;
+		};
+
+		try {
+			const cartData = await deductRequest();
+
+			dispatch(
+				cartActions.replaceCart({
+					items: cartData.cartItems || [],
+					totalQuantity: cartData.cartItems.length || 0,
+				})
+			);
+			dispatch(uiActions.showCart());
+			dispatch(
+				uiActions.showNotification({
+					status: 'success',
+					title: 'Success!',
+					message: 'Add to cart successfully!',
+				})
+			);
+		} catch (error) {
+			console.log(error);
+			dispatch(
+				uiActions.showNotification({
+					status: 'error',
+					title: 'Error!',
+					message: 'Adding cart data failed!',
+				})
+			);
+		}
+	};
+};
+
+export const clearCartData = () => {
+	return async (dispatch) => {
+		dispatch(
+			uiActions.showNotification({
+				status: 'pending',
+				title: 'Sending.',
+				message: 'Sending cart data!',
+			})
+		);
+
+		const clearRequest = async () => {
+			const response = await axios.get(
+				`${API.clearShoppingCart.url}`,
+				API.config
+			);
+
+			if (response.status !== 201) {
+				throw new Error('Clear cart data failed.');
+			}
+
+			const data = await response.data;
+
+			return data;
+		};
+
+		try {
+			await clearRequest();
+
+			dispatch(
+				cartActions.replaceCart({
+					items: [],
+					totalQuantity: 0,
+				})
+			);
+			dispatch(
+				uiActions.showNotification({
+					status: 'success',
+					title: 'Success!',
+					message: 'Add to cart successfully!',
+				})
+			);
+		} catch (error) {
+			console.log(error);
 			dispatch(
 				uiActions.showNotification({
 					status: 'error',

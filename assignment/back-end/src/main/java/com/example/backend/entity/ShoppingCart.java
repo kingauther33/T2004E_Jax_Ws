@@ -60,17 +60,25 @@ public class ShoppingCart {
         mapCartItems.put(product.getId(), item);
     }
 
-//    public void remove(Product product) {
-//        if (mapCartItems == null) {
-//            mapCartItems = new HashMap<>();
-//        }
-//
-//        CartItem item = mapCartItems.get(product.getId());
-//        if (item != null) {
-//            cartItems.remove(mapCartItems.get(product.getId()));
-//            mapCartItems.remove(product.getId());
-//        }
-//    }
+    public void deduct(Product product, int quantity) {
+        if (mapCartItems == null) {
+            mapCartItems = new HashMap<>();
+        }
+
+        CartItem item = mapCartItems.get(product.getId());
+        if (item == null) {
+            item = new CartItem();
+            item.setProductId(product.getId());
+            item.setProductName(product.getName());
+            item.setUnitPrice(product.getPrice());
+            item.setQuantity(quantity);
+        } else if (item.getQuantity() <= quantity) {
+            item.setQuantity(-1);
+        } else {
+            item.setQuantity(item.getQuantity() - quantity);
+        }
+        mapCartItems.put(product.getId(), item);
+    }
 
     public int getId() {
         return id;
@@ -130,6 +138,7 @@ public class ShoppingCart {
 
     public void setCartItems(List<CartItem> cartItems) {
         this.cartItems = cartItems;
+        this.mapCartItems = new HashMap<>();
         for (CartItem item :
                 cartItems) {
             this.mapCartItems.put(item.getProductId(), item);
